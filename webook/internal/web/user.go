@@ -1,9 +1,10 @@
 package web
 
 import (
-	"fmt"
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-gonic/gin"
+	"learn-geektime-basic-go/webook/internal/domain"
+	"learn-geektime-basic-go/webook/internal/service"
 	"net/http"
 	"net/mail"
 )
@@ -14,14 +15,16 @@ func isValidEmail(email string) bool {
 }
 
 type UserHandler struct {
+	svc        *service.UserService
 	passwordRe *regexp.Regexp
 }
 
-func NewUserHandler() *UserHandler {
+func NewUserHandler(svc *service.UserService) *UserHandler {
 	const passwordRegexPattern = `^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&])[A-Za-z\d$@$!%*#?&]{8,}$`
 	re := regexp.MustCompile(passwordRegexPattern, 0)
 
 	return &UserHandler{
+		svc:        svc,
 		passwordRe: re,
 	}
 }
@@ -65,8 +68,9 @@ func (u *UserHandler) SignUp(ctx *gin.Context) {
 	if !ok {
 		ctx.String(http.StatusOK, "密码必须大于8位，包含特殊字符")
 	}
-	ctx.String(http.StatusOK, "OK")
-	fmt.Printf("%v", req)
+	err = u.svc.Signup(ctx.Request.Context(),
+		domain.User{Email: req.Email, Password: req.ConfirmPassword})
+	ctx.String(http.StatusOK, "hello, 注册成功")
 	return
 }
 
