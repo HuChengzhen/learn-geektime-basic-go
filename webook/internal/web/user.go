@@ -1,7 +1,9 @@
 package web
 
 import (
+	"errors"
 	regexp "github.com/dlclark/regexp2"
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"learn-geektime-basic-go/webook/internal/domain"
 	"learn-geektime-basic-go/webook/internal/service"
@@ -68,14 +70,55 @@ func (u *UserHandler) SignUp(ctx *gin.Context) {
 	if !ok {
 		ctx.String(http.StatusOK, "密码必须大于8位，包含特殊字符")
 	}
-	err = u.svc.Signup(ctx.Request.Context(),
-		domain.User{Email: req.Email, Password: req.ConfirmPassword})
+	err = u.svc.Signup(ctx.Request.Context(), domain.User{Email: req.Email, Password: req.ConfirmPassword})
+
+	if errors.Is(err, service.ErrUserDuplicateEmail) {
+		ctx.String(http.StatusOK, "重复邮箱，请换一个邮箱")
+		return
+	}
+
+	if err != nil {
+		ctx.String(http.StatusOK, "系统异常")
+		return
+	}
 	ctx.String(http.StatusOK, "hello, 注册成功")
 	return
 }
 
 func (u *UserHandler) Login(ctx *gin.Context) {
+	type LoginReq struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
 
+	var req LoginReq
+	if ctx.Bind(&req) != nil {
+		return
+	}
+
+	user, err := u.svc.Login(ctx.Request.Context(), req.Email, req.Password)
+	if errors.Is(err, service.ErrInvalidUserOrPassword) {
+		ctx.String(http.StatusOK, "用户名或密码不对")
+		return
+	}
+
+	if err != nil {
+		ctx.String(http.StatusOK, "系统错误")
+		return
+	}
+
+	sess := sessions.Default(ctx)
+
+	sess.Set("userId", user.Id)
+	err = sess.Save()
+	if err != nil {
+		ctx.String(http.StatusOK, "系统错误")
+		return
+	}
+
+	ctx.String(http.StatusOK, "登录成功")
+
+	return
 }
 
 func (u *UserHandler) Edit(ctx *gin.Context) {

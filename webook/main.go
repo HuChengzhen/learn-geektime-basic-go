@@ -2,6 +2,8 @@ package main
 
 import (
 	"github.com/gin-contrib/cors"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -9,6 +11,7 @@ import (
 	"learn-geektime-basic-go/webook/internal/repository/dao"
 	"learn-geektime-basic-go/webook/internal/service"
 	"learn-geektime-basic-go/webook/internal/web"
+	"learn-geektime-basic-go/webook/internal/web/middleware"
 )
 
 func main() {
@@ -33,6 +36,15 @@ func initServer() *gin.Engine {
 	config.AllowCredentials = true
 	config.AllowHeaders = []string{"authorization", "Content-Type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization", "accept", "origin", "Cache-Control", "X-Requested-With"}
 	server.Use(cors.New(config))
+
+	store := cookie.NewStore([]byte("secret"))
+	server.Use(sessions.Sessions("mysession", store))
+
+	server.Use(middleware.NewLoginMiddlewareBuilder().
+		IgnorePaths("/user/signup").
+		IgnorePaths("/user/login").
+		Build(),
+	)
 	return server
 }
 
