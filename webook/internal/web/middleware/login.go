@@ -1,9 +1,11 @@
 package middleware
 
 import (
+	"fmt"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"time"
 )
 
 type LoginMiddlewareBuilder struct {
@@ -38,5 +40,29 @@ func (l *LoginMiddlewareBuilder) Build() gin.HandlerFunc {
 			context.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
+
+		updateTime := sess.Get("update_time")
+		now := time.Now()
+
+		if updateTime == nil {
+			sess.Set("update_time", now)
+			sess.Save()
+			return
+		}
+
+		updateTimeVal, ok := updateTime.(time.Time)
+
+		if !ok {
+			context.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+
+		if now.Sub(updateTimeVal) >= time.Minute {
+			sess.Set("update_time", now)
+			sess.Save()
+			return
+		}
+
+		fmt.Println(id)
 	}
 }
